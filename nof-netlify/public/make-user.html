@@ -1,0 +1,25 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Make a user line</title>
+<style>body{font:15px/1.5 system-ui,sans-serif;max-width:560px;margin:20px auto;padding:0 14px}input,select,button{font:inherit;padding:7px 10px;margin:4px 0;width:100%;box-sizing:border-box}button{cursor:pointer}textarea{width:100%;height:150px;font:13px monospace;box-sizing:border-box}</style></head><body>
+<h1>Make a user line</h1>
+<p>Type a username and password, press the button, and copy the line into the <b>USERS</b> setting in Netlify. The password is turned into a code on this device only; nothing is sent anywhere.</p>
+<input id="u" placeholder="Username (letters and numbers, e.g. dorothy)" autocomplete="off">
+<input id="p" type="text" placeholder="Password (at least 8 characters)" autocomplete="off">
+<select id="r"><option value="officer">Officer</option><option value="admin">Admin</option></select>
+<button id="go">Make line</button>
+<p id="e" style="color:#b45309"></p>
+<p>Lines so far (join them with commas in the USERS setting):</p>
+<textarea id="out" readonly></textarea>
+<script>
+const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
+document.getElementById("go").onclick=async()=>{const e=document.getElementById("e");e.textContent="";
+const u=document.getElementById("u").value.trim().toLowerCase(),p=document.getElementById("p").value;
+if(!/^[a-z0-9._-]{3,30}$/.test(u)){e.textContent="Username: 3-30 letters, numbers, . _ -";return}
+if(p.length<8){e.textContent="Password must be at least 8 characters";return}
+if(!window.crypto||!crypto.subtle){e.textContent="Open this page from your Netlify web address (https) or use Chrome/Edge.";return}
+const salt=crypto.getRandomValues(new Uint8Array(16));
+const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(p),"PBKDF2",false,["deriveBits"]);
+const bits=await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt,iterations:100000},key,256);
+const line=u+":"+document.getElementById("r").value+":"+hex(salt)+":"+hex(bits);
+const o=document.getElementById("out");o.value=(o.value?o.value+",\n":"")+line;document.getElementById("u").value="";document.getElementById("p").value=""};
+</script></body></html>

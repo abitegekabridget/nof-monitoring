@@ -1,0 +1,1 @@
+{ "name": "nof-monitoring-log", "version": "1.0.0", "private": true, "type": "module", "dependencies": { "@netlify/blobs": "^9.1.2" } }
