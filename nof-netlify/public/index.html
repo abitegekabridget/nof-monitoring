@@ -33,13 +33,18 @@ th,td{border:1px solid var(--bd);padding:6px 8px;text-align:left;vertical-align:
 <div class="row"><input id="lpw" type="password" placeholder="Password" autocomplete="current-password"></div>
 <div id="lerr" class="wr" style="margin-bottom:8px"></div><button class="pri" id="lgo">Log in</button>
 </section>
+<dialog id="pwd"><h2 style="margin-top:0">Change password</h2>
+<div class="row"><input type="password" id="po" placeholder="Current password" autocomplete="current-password"></div>
+<div class="row"><input type="password" id="pn" placeholder="New password (8+ characters)" autocomplete="new-password"></div>
+<div id="perr" class="wr" style="margin-bottom:8px"></div>
+<div class="row"><button class="pri" id="pok">Change password</button><button id="pcancel">Cancel</button></div></dialog>
 <div id="app" hidden>
 <div class="noprint">
 <h1>NOF Monitoring and Maintenance Log</h1>
 <div class="sub">Entebbe International NOTAM Office – daily entries feed the monthly assigned-NOF report</div>
-<div class="bar"><span id="who"></span><button class="sm" id="rf">Refresh</button><button class="sm" id="out">Log out</button></div>
+<div class="bar"><span id="who"></span><button class="sm" id="rf">Refresh</button><button class="sm" id="pw">Change password</button><button class="sm" id="out">Log out</button></div>
 <div id="banner"></div>
-<div class="tabs"><button id="t1" class="on">Daily log</button><button id="t2" hidden>NOF view / monthly report</button></div>
+<div class="tabs"><button id="t1" class="on">Daily log</button><button id="t2" hidden>NOF view / monthly report</button><button id="t3" hidden>Users</button></div>
 </div>
 
 <section id="v1" class="noprint">
@@ -66,6 +71,13 @@ th,td{border:1px solid var(--bd);padding:6px 8px;text-align:left;vertical-align:
 <div id="rep"></div>
 </section>
 
+<section id="v3" hidden class="noprint">
+<div class="card"><h2 style="margin-top:0">Add a user</h2>
+<div class="row"><input id="unm" placeholder="Username (e.g. dorothy)" autocomplete="off"><input id="upw" type="password" placeholder="Temporary password (8+ characters)" autocomplete="new-password">
+<select id="urole"><option value="officer">Officer</option><option value="admin">Admin</option></select><button class="pri" id="ucreate">Create user</button></div>
+<div class="mut">New users must choose their own password the first time they log in.</div></div>
+<div class="card" id="ulist"></div>
+</section>
 </div>
 <script>
 const RAW="FAJN:ABDF HKJK:ABV EHAM:ABM DGAA:AB EBBR:AG FMMM:AB HECA:AW LKPR:AB DAAA EVRA FHSH FNLU GLRB HLLL LGGG LOWW LUKK OEJD ORBI UKKR UUUU:AEGHJKLNOPQUVWXYZ EGGN:ABDFHIJMPV HHAS LEAN LMMM LSSN OBBB OOMS UDDD LFFA:ABCDEFHPRWZ FZAZ:ABV DNLL:AB FXMM:AB HAAB:AC LDZA:AM VOMM:AC EYVN FIMP FQHQ GMMM HSSS LHBP LPPP LWSK OJAI ORBS UBBU EPWW:ABCDEFGH VIDP:ABCG LCNC:ABN ESSA:AB FVHA:AB HRYR:AB OAKB:DG EETN FBSK FSIA FWKI HBBA LAAA LJLA LQBH LYBB OKNO OTNO VABB EKCH:ABCD LTAA:ABCJ EDDZ:ABC LIIA:AEW FCCC:AB GOOO:AB HTDA:AB OPKC:AG EINN FDSK FLKK FYWH HCMM LBSF LLAD LRBB LZIB OMAE OYSN VECC";
@@ -81,8 +93,8 @@ fill($("nof"),NOFS.map(n=>[n.c,n.c]));fill($("rnof"),[["","All NOFs"],...NOFS.ma
 $("date").value=today();$("rmon").value=today().slice(0,7);
 const showSer=()=>fill($("sers"),[["","All series / not series-specific"],...SER[$("nof").value].split(", ").map(x=>[x,"Series "+x])]);
 $("nof").onchange=showSer;showSer();$("date").onchange=load;
-$("t1").onclick=()=>tab(1);$("t2").onclick=()=>tab(2);
-function tab(n){["1","2"].forEach(i=>{$("v"+i).hidden=i!=n;$("t"+i).className=i==n?"on":""});if(n==2){renderRep();load()}}
+$("t1").onclick=()=>tab(1);$("t2").onclick=()=>tab(2);$("t3").onclick=()=>tab(3);
+function tab(n){["1","2","3"].forEach(i=>{$("v"+i).hidden=i!=n;$("t"+i).className=i==n?"on":""});if(n==2){renderRep();load()}if(n==3)loadUsers()}
 let me=null;
 async function call(m,u,b){const r=await fetch(u,{method:m,headers:{"Content-Type":"application/json"},body:b?JSON.stringify(b):undefined});let d={};try{d=await r.json()}catch(e){}if(r.status==401&&u!="api/login"){me=null;showLogin();throw new Error("Please log in")}if(!r.ok)throw new Error(d.error||"HTTP "+r.status);return d}
 const api=(m,p,b)=>call(m,"api/logs"+(p||""),b);
@@ -134,10 +146,20 @@ if(!obs.length)w.append(el("div","None recorded.","mut"));obs.forEach(l=>w.appen
 w.append(el("div","Entebbe International NOTAM Office – NOF Monitoring and Maintenance","mut"));R.append(w)})}
 $("rmon").onchange=load;$("rnof").onchange=renderRep;$("print").onclick=()=>window.print();
 function showLogin(){$("app").hidden=true;$("login").hidden=false;$("lpw").value=""}
-async function enter(u){me=u;$("login").hidden=true;$("app").hidden=false;$("who").textContent="Signed in as "+u.username+" ("+u.role+")";$("t2").hidden=u.role!="admin";tab(1);await load()}
+function changePw(force){return new Promise(res=>{const d=$("pwd");$("po").value=$("pn").value="";$("perr").textContent=force?"You must choose a new password before continuing.":"";$("pcancel").hidden=force;
+$("pok").onclick=async()=>{try{await call("POST","api/password",{old:$("po").value,new:$("pn").value});me.mustChange=false;d.close();res()}catch(e){$("perr").textContent=e.message}};
+$("pcancel").onclick=()=>{d.close();res()};d.oncancel=e=>{if(force)e.preventDefault()};d.showModal()})}
+async function loadUsers(){const us=await call("GET","api/users"),T=$("ulist");T.textContent="";const t=el("table"),h=el("tr");["Username","Role","Actions"].forEach(x=>h.append(el("th",x)));t.append(h);
+us.forEach(u=>{const r=el("tr"),a=el("td");
+if(u.source=="app"){const rp=el("button","Reset password","sm");rp.onclick=async()=>{const p=prompt("Temporary password for "+u.username+" (8+ characters). They must change it at next login:");if(!p)return;try{await call("POST","api/users/"+u.id+"/password",{password:p});alert("Password reset.")}catch(e){alert(e.message)}};a.append(rp);
+if(u.id!=me.id){const d=el("button","Delete","sm");d.onclick=async()=>{if(!confirm("Delete user "+u.username+"? Their past entries are kept."))return;try{await call("DELETE","api/users/"+u.id);loadUsers()}catch(e){alert(e.message)}};a.append(" ",d)}}
+else a.append(el("span","Set in Netlify settings","mut"));
+r.append(el("td",u.username),el("td",u.role),a);t.append(r)});const s=el("div",null,"scroll");s.append(t);T.append(s)}
+$("ucreate").onclick=async()=>{try{await call("POST","api/users",{username:$("unm").value.trim().toLowerCase(),password:$("upw").value,role:$("urole").value});$("unm").value=$("upw").value="";loadUsers()}catch(e){alert(e.message)}};
+async function enter(u){me=u;$("login").hidden=true;$("app").hidden=false;$("who").textContent="Signed in as "+u.username+" ("+u.role+")";$("t2").hidden=$("t3").hidden=u.role!="admin";tab(1);if(u.mustChange)await changePw(true);await load()}
 $("lgo").onclick=async()=>{$("lerr").textContent="";try{await enter(await call("POST","api/login",{username:$("lus").value.trim().toLowerCase(),password:$("lpw").value}))}catch(e){$("lerr").textContent=e.message}};
 $("lpw").onkeydown=e=>{if(e.key=="Enter")$("lgo").click()};
 $("out").onclick=async()=>{try{await call("POST","api/logout")}catch(e){}me=null;logs=[];showLogin()};
-$("rf").onclick=load;
+$("rf").onclick=load;$("pw").onclick=()=>changePw(false);
 (async()=>{try{await enter(await call("GET","api/me"))}catch(e){showLogin()}setInterval(()=>{if(me&&!document.hidden)load()},300000);document.addEventListener("visibilitychange",()=>{if(me&&!document.hidden)load()})})();
 </script></main></body></html>
