@@ -2,33 +2,11 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>NOF Monitoring Log</title>
-<style>
-:root{--bg:#f6f6f3;--fg:#1c1c1a;--mut:#66665f;--card:#fff;--bd:#d8d8d0;--ac:#1f5fa8;--ok:#2d7a3e;--wr:#b45309;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#151515;--fg:#ececE8;--mut:#9a9a92;--card:#202020;--bd:#3a3a36;--ac:#6aa6ec;--ok:#6cc47e;--wr:#e8a050;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#151515;--fg:#ececE8;--mut:#9a9a92;--card:#202020;--bd:#3a3a36;--ac:#6aa6ec;--ok:#6cc47e;--wr:#e8a050;color-scheme:dark}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
-main{max-width:900px;margin:0 auto;padding:16px}
-h1{font-size:19px;margin:0 0 2px}h2{font-size:16px;margin:18px 0 8px}
-.sub{color:var(--mut);font-size:13px;margin-bottom:12px}
-.tabs{display:flex;gap:6px;margin:12px 0}
-button,select,input,textarea{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--bd);border-radius:6px;padding:7px 10px}
-button{cursor:pointer}button.on,button.pri{background:var(--ac);color:#fff;border-color:var(--ac)}
-.card{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:12px;margin-bottom:12px}
-.row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}.row>*{flex:1 1 140px;min-width:0}
-textarea{width:100%;box-sizing:border-box;min-height:56px;resize:vertical}
-.scroll{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:14px}
-th,td{border:1px solid var(--bd);padding:6px 8px;text-align:left;vertical-align:top}th{background:var(--bg)}
-.ok{color:var(--ok)}.wr{color:var(--wr)}.mut{color:var(--mut);font-size:13px}
-.ent{border-top:1px solid var(--bd);padding:8px 0}.ent:first-child{border-top:0}
-.sm{padding:3px 8px;font-size:13px}
-.banner{background:var(--card);border:1px solid var(--wr);border-radius:6px;padding:8px;margin-bottom:10px;font-size:13px}
-.rep{page-break-after:always}dialog{background:var(--card);color:var(--fg);border:1px solid var(--bd);border-radius:8px;max-width:340px}dialog::backdrop{background:rgba(0,0,0,.45)}.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;font-size:13px}
-@media print{body{background:#fff;color:#000}.noprint{display:none!important}main{padding:0}.card{border:0;padding:0}th{background:#eee}}
-</style></head><body><main>
-<section id="login" class="card noprint" hidden style="max-width:360px;margin:60px auto">
-<h1>NOF Monitoring Log</h1><div class="sub">Log in to continue</div>
+<meta name="theme-color" content="#0b2a4a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%93%A1%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css"></head><body><main>
+<section id="login" class="card noprint" hidden>
+<div class="logo-head"><h1>NOF Monitoring Log</h1><div class="sub">Log in to continue</div></div>
 <div class="row"><input id="lus" placeholder="Username" autocomplete="username"></div>
 <div class="row"><input id="lpw" type="password" placeholder="Password" autocomplete="current-password"></div>
 <div id="lerr" class="wr" style="margin-bottom:8px"></div><button class="pri" id="lgo">Log in</button>
@@ -47,13 +25,10 @@ th,td{border:1px solid var(--bd);padding:6px 8px;text-align:left;vertical-align:
 <div id="eerr" class="wr" style="margin:6px 0"></div>
 <div class="row"><button class="pri" id="eok">Save changes</button><button id="ecancel">Cancel</button></div></dialog>
 <div id="app" hidden>
-<div class="noprint">
-<h1>NOF Monitoring and Maintenance Log</h1>
-<div class="sub">Entebbe International NOTAM Office – daily entries feed the monthly assigned-NOF report</div>
-<div class="bar"><span id="who"></span><button class="sm" id="rf">Refresh</button><button class="sm" id="pw">Change password</button><button class="sm" id="out">Log out</button></div>
-<div id="banner"></div>
-<div class="tabs"><button id="t1" class="on">Daily log</button><button id="t2" hidden>NOF view / monthly report</button><button id="t3" hidden>Users</button></div>
-</div>
+<header class="top noprint"><div class="brand"><h1>NOF Monitoring and Maintenance Log</h1><div class="sub">Entebbe International NOTAM Office</div></div>
+<div class="bar"><span id="who"></span><button class="sm" id="rf">Refresh</button><button class="sm" id="pw">Change password</button><button class="sm" id="out">Log out</button></div></header>
+<div class="noprint"><div id="banner"></div>
+<nav class="tabs"><button id="t1" class="on">Daily log</button><button id="t2" hidden>NOF view / monthly report</button><button id="t3" hidden>Users</button></nav></div>
 
 <section id="v1" class="noprint">
 <div class="card">
@@ -117,12 +92,14 @@ function renderList(){const d=$("date").value,L=$("list");L.textContent="";
 $("lh").textContent="Entries for "+d+" (all NOFs)";
 const xs=logs.filter(l=>l.date==d).sort((a,b)=>a.ts-b.ts);
 if(!xs.length){L.append(el("div","Nothing logged yet for this date.","mut"));return}
-xs.forEach(l=>{const r=el("div",null,"ent");
-r.append(el("b",(l.nof||"General")+(l.series?" ("+l.series+")":"")+(l.type=="clear"?" – checked, no issues":l.type=="obs"?" – observation":" – ")));
-if(l.status)r.append(el("b",l.status,l.status=="Resolved"?"ok":"wr"));
+xs.forEach(l=>{const r=el("div",null,"ent"+(l.status=="Outstanding"?" open":l.status=="Resolved"?" done":l.type=="clear"?" clear":"")),hd=el("div",null,"ent-head");
+hd.append(el("span",l.nof||"General","ident"));
+hd.append(el("span",l.type=="clear"?(l.series?"Series "+l.series:"All series")+" checked, no issues":l.type=="obs"?"Observation"+(l.series?", series "+l.series:""):(l.series?"Series "+l.series:"No series given"),"ent-lab"));
+if(l.status)hd.append(el("span",l.status,"chip "+(l.status=="Resolved"?"ok":"wr")));
+r.append(hd);
 if(l.issue)r.append(el("div",l.issue));
-if(l.action)r.append(el("div","Action: "+l.action,"mut"));r.append(el("div","Logged by "+(l.by||"—")+(l.edited?" · edited":""),"mut"));
-const bar=el("div");bar.style.marginTop="4px";
+if(l.action)r.append(el("div","Action: "+l.action,"mut"));r.append(el("div","Logged by "+(l.by||"—")+(l.edited?", edited":""),"mut"));
+const bar=el("div");bar.style.marginTop="10px";
 if(l.status&&(me.role=="admin"||l.byId==me.id)){const t=el("button",l.status=="Resolved"?"Reopen":"Mark resolved","sm");t.onclick=()=>upd(l,{status:l.status=="Resolved"?"Outstanding":"Resolved"});bar.append(t,document.createTextNode(" "))}
 if(me.role=="admin"||l.byId==me.id){const e2=el("button","Edit","sm");e2.onclick=()=>editEntry(l);bar.append(e2," ");const x=el("button","Delete","sm");x.onclick=()=>{if(confirm("Delete this entry?"))del(l)};bar.append(x)}r.append(bar);L.append(r)})}
 async function upd(l,p){try{await api("PATCH","/"+l.id,p);await load()}catch(e){alert("Could not update")}}
@@ -132,7 +109,7 @@ const inM=logs.filter(l=>(l.date||"").startsWith(m));
 const codes=s?[s]:NOFS.map(n=>n.c).filter(c=>inM.some(l=>l.nof==c));
 if(!s){const w=el("div",null,"card");w.append(el("h2","NOF summary – "+mname(m)));
 const t=el("table"),hr=el("tr");["NOF","Days checked","Issues","Outstanding"].forEach(x=>hr.append(el("th",x)));t.append(hr);
-codes.forEach(c=>{const xs=inM.filter(l=>l.nof==c),r=el("tr");r.append(el("td",c),el("td",String(new Set(xs.filter(l=>l.type!="obs").map(l=>l.date)).size)),el("td",String(xs.filter(l=>l.type=="issue").length)),el("td",String(xs.filter(l=>l.status=="Outstanding").length)));t.append(r)});
+codes.forEach(c=>{const xs=inM.filter(l=>l.nof==c),r=el("tr");const tdc=el("td");tdc.append(el("span",c,"ident"));r.append(tdc,el("td",String(new Set(xs.filter(l=>l.type!="obs").map(l=>l.date)).size)),el("td",String(xs.filter(l=>l.type=="issue").length)),el("td",String(xs.filter(l=>l.status=="Outstanding").length)));t.append(r)});
 const sc=el("div",null,"scroll");sc.append(t);w.append(sc);
 w.append(el("div",(NOFS.length-codes.length)+" of "+NOFS.length+" NOFs have no entries this month.","mut"));R.append(w)}
 codes.forEach(c=>{const xs=inM.filter(l=>l.nof==c).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.ts-b.ts);
