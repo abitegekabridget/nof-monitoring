@@ -1,0 +1,137 @@
+/* NOF Monitoring Log - stylesheet
+   Look: aeronautical-chart paper, deep chart blue, flag magenta for open items.
+   NOF codes are drawn like airport ident boxes on a chart. Edit the colours in :root. */
+:root{
+  --paper:#e9eff5; --panel:#ffffff; --ink:#0e2237; --ink2:#52687d; --line:#c9d5e0;
+  --navy:#0b2a4a; --blue:#0a58a8; --blue-soft:#e0ebf6; --grid:rgba(10,88,168,.055);
+  --flag:#b0145f; --flag-bg:#fbe7f0; --ok:#1c7548; --ok-bg:#e2f4ea; --amber:#9a5b00; --amber-bg:#fff3d9;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{--paper:#0b1520; --panel:#122131; --ink:#e5edf5; --ink2:#92a6b9; --line:#25384b;
+    --navy:#071420; --blue:#5aa7ee; --blue-soft:#162f48; --grid:rgba(90,167,238,.06);
+    --flag:#ff7ab4; --flag-bg:#3a1428; --ok:#5fd29a; --ok-bg:#123324; --amber:#f0b45a; --amber-bg:#3a2a0e; color-scheme:dark}
+}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;color:var(--ink);background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:40px 40px;
+  font:15px/1.5 "Segoe UI Variable Text","Segoe UI","Helvetica Neue",Arial,system-ui,sans-serif;
+  font-variant-numeric:tabular-nums;padding-bottom:env(safe-area-inset-bottom,0px)}
+main{max-width:920px;margin:0 auto;padding:16px 16px 48px}
+
+h1{font-size:22px;line-height:1.2;font-weight:650;letter-spacing:-.01em;margin:0}
+h2{font-size:16px;font-weight:650;margin:22px 0 10px}
+.sub{color:var(--ink2);font-size:14px;margin-top:2px}
+.mut{color:var(--ink2);font-size:13px}
+.ok{color:var(--ok)} .wr{color:var(--flag)}
+
+/* title band, runs edge to edge */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;
+  background:var(--navy);color:#fff;margin:-16px -16px 18px;padding:max(20px,env(safe-area-inset-top,0px)) 16px 16px;
+  box-shadow:0 0 0 100vmax var(--navy);clip-path:inset(0 -100vmax)}
+.top .sub{color:rgba(255,255,255,.72)}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px}
+#who{color:rgba(255,255,255,.85);margin-right:4px}
+.top .bar button{background:transparent;color:#fff;border-color:rgba(255,255,255,.35)}
+.top .bar button:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.7)}
+
+/* tabs */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:4px 0 18px;overflow-x:auto;scrollbar-width:none}
+.tabs button{background:none;border:0;border-bottom:3px solid transparent;border-radius:0;margin-bottom:-1px;
+  padding:10px 16px;color:var(--ink2);font-weight:600;white-space:nowrap}
+.tabs button:hover{color:var(--ink);background:none}
+.tabs button.on{color:var(--blue);border-bottom-color:var(--blue)}
+
+/* panels */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;margin-bottom:14px}
+#v1>.card{border-left:4px solid var(--blue)}
+.row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+.row>*{flex:1 1 150px;min-width:0}
+
+/* controls */
+button,select,input,textarea{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);
+  border-radius:6px;padding:9px 12px;min-height:40px}
+textarea{display:block;width:100%;min-height:72px;resize:vertical;line-height:1.45}
+select{cursor:pointer}
+input:hover,select:hover,textarea:hover{border-color:#8da4ba}
+button{cursor:pointer;font-weight:600;transition:background-color .15s,border-color .15s,color .15s}
+button:hover{border-color:var(--blue);color:var(--blue)}
+button.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+button.pri:hover{background:#0847893a;filter:brightness(1.12);color:#fff}
+button.sm{min-height:32px;padding:4px 11px;font-size:13px}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+input::placeholder,textarea::placeholder{color:var(--ink2);opacity:.85}
+
+/* NOF ident, drawn like an airport box on a chart */
+.ident{display:inline-block;font-weight:700;font-size:14px;letter-spacing:.07em;line-height:1.2;padding:2px 8px;
+  border:2px solid var(--blue);border-radius:3px;background:var(--panel);color:var(--blue)}
+.chip{display:inline-block;font-size:12.5px;font-weight:650;padding:1px 10px;border-radius:999px}
+.chip.wr{background:var(--flag-bg);color:var(--flag)}
+.chip.ok{background:var(--ok-bg);color:var(--ok)}
+
+/* daily entries */
+.ent{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:4px;
+  padding:12px 14px 12px 16px;margin-bottom:8px}
+.ent.open{border-left-color:var(--flag)} .ent.done{border-left-color:var(--ok)} .ent.clear{border-left-color:var(--blue)}
+.ent-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-bottom:6px}
+.ent-lab{font-weight:600}
+.ent>div+div{margin-top:2px}
+
+/* tables and reports */
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:4px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 10px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{background:var(--blue-soft);font-weight:650;white-space:nowrap}
+tr:last-child td,tr:last-child th{border-bottom:0}
+tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--blue-soft) 35%,transparent)}
+.rep{border-top:4px solid var(--navy);padding:20px}
+.rep h2:first-child{font-size:18px;margin-top:0;letter-spacing:.01em}
+.rep h2{margin-top:20px}
+.rep table th:first-child{width:34%}
+.banner{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber);border-radius:6px;padding:9px 12px;margin-bottom:12px;font-size:14px}
+
+/* dialogs */
+dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:20px;
+  width:calc(100% - 32px);max-width:400px;box-shadow:0 24px 64px rgba(7,20,32,.4)}
+dialog[open]{animation:pop .16s ease-out}
+dialog::backdrop{background:rgba(7,20,32,.55);backdrop-filter:blur(2px)}
+dialog h2{margin-top:0}
+@keyframes pop{from{opacity:0;transform:translateY(6px) scale(.98)}to{opacity:1;transform:none}}
+
+/* log in */
+#login{max-width:390px;margin:48px auto;padding:0;overflow:hidden;border-top:0}
+#login .logo-head{background:var(--navy);color:#fff;padding:22px 22px 18px}
+#login .logo-head .sub{color:rgba(255,255,255,.72)}
+#login .row,#login #lerr{margin-left:22px;margin-right:22px}
+#login .row:first-of-type{margin-top:22px}
+#login #lerr{min-height:20px;margin-bottom:6px;font-size:14px}
+#login #lgo{display:block;width:calc(100% - 44px);margin:0 22px 22px}
+
+/* small screens */
+@media (max-width:600px){
+  main{padding:12px 12px 40px}
+  .top{margin:-12px -12px 14px;padding:18px 12px 14px}
+  h1{font-size:19px}
+  .card{padding:12px}
+  .rep{padding:14px}
+  .row>*{flex-basis:100%}
+  .tabs button{padding:10px 12px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* printing the monthly report */
+@media print{
+  body{background:#fff;color:#000;font-size:12pt}
+  .noprint{display:none!important}
+  main{padding:0;max-width:none}
+  .card,.rep{border:0;padding:0;background:#fff}
+  .rep{border-top:3px solid #000;padding-top:10px;margin-bottom:28px}
+  .scroll{border:1px solid #888;overflow:visible}
+  th{background:#e6e6e6!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  th,td{border-color:#999}
+  tbody tr:nth-child(even) td{background:none}
+  .ident{border-color:#000;color:#000}
+}
