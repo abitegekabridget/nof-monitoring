@@ -1,9 +1,9 @@
 // NOF Monitoring Log - Netlify Function (API).
-// LOGINS use no database: accounts are listed in the USERS environment variable (hashed passwords),
-// and a signed cookie keeps people logged in. ENTRIES are saved in Netlify Blobs.
-// Environment variables needed: SESSION_SECRET and USERS (see README).
+// ACCOUNTS come from two places: (1) the USERS environment variable (permanent accounts, e.g. the admins), and
+// (2) accounts the admin creates inside the app (saved in Netlify Blobs). A signed cookie keeps people logged in.
+// ENTRIES are saved in Netlify Blobs. Environment variables needed: SESSION_SECRET and USERS (see README).
 import { getStore } from "@netlify/blobs";
-import { pbkdf2Sync, randomUUID, timingSafeEqual, createHmac } from "node:crypto";
+import { pbkdf2Sync, randomBytes, randomUUID, timingSafeEqual, createHmac } from "node:crypto";
 
 const store = getStore({ name: "nof", consistency: "strong" });
 const SESSION_MS = 12 * 3600e3;
@@ -15,11 +15,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const safeEq = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && timingSafeEqual(x, y); };
 const pbk = (pw, saltHex) => pbkdf2Sync(String(pw), Buffer.from(saltHex, "hex"), 100000, 32, "sha256").toString("hex");
 // USERS = "username:role:salt:hash,username:role:salt:hash"  (made with make-user.html)
-const getUsers = () => (process.env.USERS || "").split(/[,;\n]+/).map(s => s.trim()).filter(Boolean).map(l => {
+const envUsers = () => (process.env.USERS || "").split(/[,;\n]+/).map(s => s.trim()).filter(Boolean).map(l => {
   const [u, role, salt, hash] = l.split(":");
-  return { username: (u || "").toLowerCase(), role: role === "admin" ? "admin" : "officer", salt, hash };
+  return { username: (u || "").toLowerCase(), role: role === "admin" ? "admin" : "officer", salt, hash, src: "env" };
 }).filter(u => u.username && /^[0-9a-f]+$/i.test(u.salt || "") && /^[0-9a-f]{64}$/i.test(u.hash || ""));
-const pub = u => ({ id: u.username, username: u.username, role: u.role, mustChange: false });
+const pub = u => ({ id: u.username, username: u.username, role: u.role, mustChange: !!u.mustChange, source: u.src === "env" ? "netlify" : "app" });
+const validPw = p => typeof p === "string" && p.length >= 8 && p.length <= 100;
+const newHash = pw => { const salt = randomBytes(16).toString("hex"); return { salt, hash: pbk(pw, salt) }; };
 const secret = () => { const s = process.env.SESSION_SECRET || ""; if (s.length < 16) throw new Error("SESSION_SECRET not set"); return s; };
 const sign = p => { const b = Buffer.from(JSON.stringify(p)).toString("base64url"); return b + "." + createHmac("sha256", secret()).update(b).digest("base64url"); };
 const verify = t => {
@@ -44,6 +46,8 @@ async function mutate(key, fn, dflt) {
   throw new Error("Busy, please retry");
 }
 const getJSON = async (key, dflt) => { const t = await store.get(key, { type: "text" }); return t ? JSON.parse(t) : dflt; };
+const appUsers = async () => (await getJSON("users", [])).map(x => ({ ...x, src: "app" }));
+const allUsers = async () => { const e = envUsers(), names = new Set(e.map(x => x.username)); return [...e, ...(await appUsers()).filter(x => !names.has(x.username))]; };
 const readBody = async req => { try { return await req.json(); } catch { return {}; } };
 const MONTH = /^\d{4}-\d{2}$/;
 
@@ -54,7 +58,7 @@ export default async (req) => {
     secret();
     if (p === "/api/login" && m === "POST") {
       const d = await readBody(req), un = str(d.username, 40).toLowerCase();
-      const u = getUsers().find(x => x.username === un);
+      const u = (await allUsers()).find(x => x.username === un);
       const ok = u ? safeEq(pbk(d.password, u.salt), u.hash) : (pbk(d.password, "00"), false);
       if (!ok) { await sleep(700); return err(401, "Wrong username or password"); }
       return send(200, pub(u), { "Set-Cookie": sessionCookie(u) });
@@ -63,10 +67,21 @@ export default async (req) => {
     if (!p.startsWith("/api/")) return err(404, "Not found");
 
     const tok = verify(cookieOf(req, "sid"));
-    const me = tok && getUsers().find(x => x.username === tok.u && x.hash.slice(0, 12) === tok.h);
+    const all = tok ? await allUsers() : [];
+    const me = tok && all.find(x => x.username === tok.u && x.hash.slice(0, 12) === tok.h);
     if (!me) return err(401, "Please log in");
 
     if (p === "/api/me" && m === "GET") return send(200, pub(me));
+    if (p === "/api/password" && m === "POST") {
+      if (me.src === "env") return err(400, "Your password is set by the administrator in Netlify settings. Ask them to change it.");
+      const d = await readBody(req);
+      if (!safeEq(pbk(d.old, me.salt), me.hash)) return err(400, "Current password is wrong");
+      if (!validPw(d.new)) return err(400, "New password must be at least 8 characters");
+      let fresh;
+      await mutate("users", arr => { const x = arr.find(z => z.username === me.username); if (!x) return false; Object.assign(x, newHash(d.new)); x.mustChange = false; fresh = { ...x, src: "app" }; }, []);
+      return send(200, { ok: true }, { "Set-Cookie": sessionCookie(fresh) });
+    }
+    if (me.mustChange) return err(403, "Change your password first");
     if (p === "/api/logs" && m === "GET") {
       const ms = str(url.searchParams.get("months"), 100).split(",").filter(x => MONTH.test(x)).slice(0, 4);
       const parts = await Promise.all(ms.map(x => getJSON("logs/" + x, [])));
@@ -93,6 +108,34 @@ export default async (req) => {
         if (me.role !== "admin") return err(403, "Only the admin can delete entries");
         const ok = await mutate(key, arr => { const i = arr.findIndex(z => z.id === id); if (i < 0) return false; arr.splice(i, 1); }, []);
         return ok ? send(200, { ok: true }) : err(404, "Not found");
+      }
+    }
+    if (p.startsWith("/api/users")) {
+      if (me.role !== "admin") return err(403, "Admin only");
+      if (p === "/api/users" && m === "GET") return send(200, all.map(pub));
+      if (p === "/api/users" && m === "POST") {
+        const d = await readBody(req), un = str(d.username, 40).toLowerCase();
+        if (!/^[a-z0-9._-]{3,30}$/.test(un)) return err(400, "Username: 3-30 letters, numbers, . _ -");
+        if (!validPw(d.password)) return err(400, "Password must be at least 8 characters");
+        if (all.some(x => x.username === un)) return err(400, "That username already exists");
+        const ok = await mutate("users", arr => { if (arr.some(x => x.username === un)) return false; arr.push({ username: un, role: d.role === "admin" ? "admin" : "officer", ...newHash(d.password), mustChange: true }); }, []);
+        return ok ? send(200, { ok: true }) : err(400, "That username already exists");
+      }
+      const r2 = p.match(/^\/api\/users\/([a-z0-9._-]{3,30})(\/password)?$/);
+      if (r2) {
+        const un = r2[1], t = all.find(x => x.username === un);
+        if (!t) return err(404, "Not found");
+        if (t.src === "env") return err(400, "This account is set in Netlify settings (USERS). Change it there.");
+        if (r2[2] && m === "POST") {
+          const d = await readBody(req); if (!validPw(d.password)) return err(400, "Password must be at least 8 characters");
+          await mutate("users", arr => { const x = arr.find(z => z.username === un); if (!x) return false; Object.assign(x, newHash(d.password)); x.mustChange = true; }, []);
+          return send(200, { ok: true });
+        }
+        if (!r2[2] && m === "DELETE") {
+          if (un === me.username) return err(400, "You cannot delete your own account");
+          await mutate("users", arr => { const i = arr.findIndex(z => z.username === un); if (i < 0) return false; arr.splice(i, 1); }, []);
+          return send(200, { ok: true });
+        }
       }
     }
     return err(404, "Not found");
