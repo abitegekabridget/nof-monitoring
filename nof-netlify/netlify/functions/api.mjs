@@ -100,14 +100,30 @@ export default async (req) => {
       const id = r[1], key = "logs/" + id.slice(0, 7);
       if (m === "PATCH") {
         const d = await readBody(req); let res = "nf", out;
-        await mutate(key, arr => { const l = arr.find(z => z.id === id); if (!l) return false; if (me.role !== "admin" && l.byId !== me.username) { res = "forbidden"; return false; } if (d.status !== undefined) l.status = clean(d).status; out = l; }, []);
-        if (res === "forbidden") return err(403, "You can only update your own entries");
+        await mutate(key, arr => {
+          const l = arr.find(z => z.id === id); if (!l) return false;
+          if (me.role !== "admin" && l.byId !== me.username) { res = "forbidden"; return false; }
+          const c = clean({ ...l, ...d }), nx = { nof: l.nof, series: l.series, issue: l.issue, action: l.action, status: l.status };
+          for (const k of ["nof", "series", "issue", "action", "status"]) if (d[k] !== undefined) nx[k] = c[k];
+          if (l.type !== "issue") { nx.status = l.status; nx.action = l.action; }
+          if (!nx.nof || (l.type !== "clear" && !nx.issue.trim())) { res = "empty"; return false; }
+          Object.assign(l, nx);
+          if (Object.keys(d).some(k => k !== "status")) { l.edited = Date.now(); l.editedBy = me.username; }
+          out = l;
+        }, []);
+        if (res === "forbidden") return err(403, "You can only change your own entries");
+        if (res === "empty") return err(400, "The issue cannot be empty");
         return out ? send(200, out) : err(404, "Not found");
       }
       if (m === "DELETE") {
-        if (me.role !== "admin") return err(403, "Only the admin can delete entries");
-        const ok = await mutate(key, arr => { const i = arr.findIndex(z => z.id === id); if (i < 0) return false; arr.splice(i, 1); }, []);
-        return ok ? send(200, { ok: true }) : err(404, "Not found");
+        let res = "nf";
+        await mutate(key, arr => {
+          const i = arr.findIndex(z => z.id === id); if (i < 0) return false;
+          if (me.role !== "admin" && arr[i].byId !== me.username) { res = "forbidden"; return false; }
+          arr.splice(i, 1); res = "ok";
+        }, []);
+        if (res === "forbidden") return err(403, "You can only delete your own entries");
+        return res === "ok" ? send(200, { ok: true }) : err(404, "Not found");
       }
     }
     if (p.startsWith("/api/users")) {
