@@ -46,7 +46,8 @@ async function mutate(key, fn, dflt) {
   throw new Error("Busy, please retry");
 }
 const getJSON = async (key, dflt) => { const t = await store.get(key, { type: "text" }); return t ? JSON.parse(t) : dflt; };
-const appUsers = async () => (await getJSON("users", [])).map(x => ({ ...x, src: "app" }));
+// if Blobs is briefly unavailable, the permanent accounts (USERS setting) can still log in
+const appUsers = async () => { try { return (await getJSON("users", [])).map(x => ({ ...x, src: "app" })); } catch (e) { console.error("could not read users from Blobs:", e); return []; } };
 const allUsers = async () => { const e = envUsers(), names = new Set(e.map(x => x.username)); return [...e, ...(await appUsers()).filter(x => !names.has(x.username))]; };
 const readBody = async req => { try { return await req.json(); } catch { return {}; } };
 const MONTH = /^\d{4}-\d{2}$/;
@@ -156,8 +157,9 @@ export default async (req) => {
     }
     return err(404, "Not found");
   } catch (e) {
-    if (String(e.message).includes("SESSION_SECRET")) return err(500, "Server not set up: add SESSION_SECRET in Netlify (see README)");
-    return err(500, "Server error");
+    console.error("api error", m, p, e);
+    if (String(e && e.message).includes("SESSION_SECRET")) return err(500, "Server not set up: add SESSION_SECRET in Netlify (see README)");
+    return err(500, "Server error: " + String((e && e.message) || e).slice(0, 160));
   }
 };
 export const config = { path: "/api/*" };
