@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NOF Monitoring Log</title>
+<meta name="theme-color" content="#0b2a4a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%93%A1%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css"></head><body><main>
+<section id="login" class="card noprint" hidden>
+<div class="logo-head"><h1>NOF Monitoring Log</h1><div class="sub">Log in to continue</div></div>
+<div class="row"><input id="lus" placeholder="Username" autocomplete="username"></div>
+<div class="row"><input id="lpw" type="password" placeholder="Password" autocomplete="current-password"></div>
+<div id="lerr" class="wr" style="margin-bottom:8px"></div><button class="pri" id="lgo">Log in</button>
+</section>
+<dialog id="pwd"><h2 style="margin-top:0">Change password</h2>
+<div class="row"><input type="password" id="po" placeholder="Current password" autocomplete="current-password"></div>
+<div class="row"><input type="password" id="pn" placeholder="New password (8+ characters)" autocomplete="new-password"></div>
+<div id="perr" class="wr" style="margin-bottom:8px"></div>
+<div class="row"><button class="pri" id="pok">Change password</button><button id="pcancel">Cancel</button></div></dialog>
+<dialog id="ed"><h2 style="margin-top:0">Edit entry</h2>
+<div class="row"><select id="enof"></select><select id="eser"></select></div>
+<textarea id="eissue" placeholder="Issues found"></textarea>
+<textarea id="eaction" placeholder="Action taken (optional)" style="margin-top:6px"></textarea>
+<div class="row" style="margin-top:8px"><select id="estat"><option>Outstanding</option><option>Resolved</option></select></div>
+<div class="mut">To change the date, delete this entry and add it again.</div>
+<div id="eerr" class="wr" style="margin:6px 0"></div>
+<div class="row"><button class="pri" id="eok">Save changes</button><button id="ecancel">Cancel</button></div></dialog>
+<div id="app" hidden>
+<header class="top noprint"><div class="brand"><h1>NOF Monitoring and Maintenance Log</h1><div class="sub">Entebbe International NOTAM Office</div></div>
+<div class="bar"><span id="who"></span><button class="sm" id="rf">Refresh</button><button class="sm" id="pw">Change password</button><button class="sm" id="out">Log out</button></div></header>
+<div class="noprint"><div id="banner"></div>
+<nav class="tabs"><button id="t1" class="on">Daily log</button><button id="t2" hidden>NOF view / monthly report</button><button id="t3" hidden>Users</button></nav></div>
+
+<section id="v1" class="noprint">
+<div class="card">
+<div class="row">
+<select id="nof"></select>
+<input type="date" id="date">
+<select id="type"><option value="issue">Issue / follow-up</option><option value="obs">Other observation</option></select>
+<select id="status"><option>Outstanding</option><option>Resolved</option></select>
+</div>
+<div class="row"><select id="sers"></select></div>
+<textarea id="issue" placeholder="Issues found"></textarea>
+<textarea id="action" placeholder="Action taken (optional)" style="margin-top:6px"></textarea>
+<div class="row" style="margin-top:8px"><button class="pri" id="add">Save entry</button>
+<button id="clear">Checked – no issues (for the series selected)</button></div>
+</div>
+<h2 id="lh">Entries</h2><div id="list"></div>
+</section>
+
+<section id="v2" hidden>
+<div class="card noprint"><div class="row">
+<select id="rnof"></select><input type="month" id="rmon">
+<button class="pri" id="print">Print / Save as PDF</button></div></div>
+<div id="rep"></div>
+</section>
+
+<section id="v3" hidden class="noprint">
+<div class="card"><h2 style="margin-top:0">Add a user</h2>
+<div class="row"><input id="unm" placeholder="Username (e.g. dorothy)" autocomplete="off"><input id="upw" type="password" placeholder="Temporary password (8+ characters)" autocomplete="new-password">
+<select id="urole"><option value="officer">Officer</option><option value="admin">Admin</option></select><button class="pri" id="ucreate">Create user</button></div>
+<div class="mut">New users must choose their own password the first time they log in.</div></div>
+<div class="card" id="ulist"></div>
+</section>
+</div>
+<script>
+const RAW="FAJN:ABDF HKJK:ABV EHAM:ABM DGAA:AB EBBR:AG FMMM:AB HECA:AW LKPR:AB DAAA EVRA FHSH FNLU GLRB HLLL LGGG LOWW LUKK OEJD ORBI UKKR UUUU:AEGHJKLNOPQUVWXYZ EGGN:ABDFHIJMPV HHAS LEAN LMMM LSSN OBBB OOMS UDDD LFFA:ABCDEFHPRWZ FZAZ:ABV DNLL:AB FXMM:AB HAAB:AC LDZA:AM VOMM:AC EYVN FIMP FQHQ GMMM HSSS LHBP LPPP LWSK OJAI ORBS UBBU EPWW:ABCDEFGH VIDP:ABCG LCNC:ABN ESSA:AB FVHA:AB HRYR:AB OAKB:DG EETN FBSK FSIA FWKI HBBA LAAA LJLA LQBH LYBB OKNO OTNO VABB EKCH:ABCD LTAA:ABCJ EDDZ:ABC LIIA:AEW FCCC:AB GOOO:AB HTDA:AB OPKC:AG EINN FDSK FLKK FYWH HCMM LBSF LLAD LRBB LZIB OMAE OYSN VECC";
+const NOFS=RAW.split(" ").map(t=>{const[a,b]=t.split(":");return{c:a,s:(b||"A").split("").join(", ")}}).sort((x,y)=>x.c<y.c?-1:1);
+const SER=Object.fromEntries(NOFS.map(n=>[n.c,n.s]));
+const $=i=>document.getElementById(i);
+const el=(t,txt,cls)=>{const e=document.createElement(t);if(txt!=null)e.textContent=txt;if(cls)e.className=cls;return e};
+let logs=[];
+const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const mname=m=>{const[y,mo]=m.split("-");return new Date(y,mo-1,1).toLocaleString("en-GB",{month:"long",year:"numeric"})};
+function fill(sel,items){sel.textContent="";items.forEach(([v,t])=>{const o=el("option",t);o.value=v;sel.append(o)})}
+fill($("nof"),NOFS.map(n=>[n.c,n.c]));fill($("rnof"),[["","All NOFs"],...NOFS.map(n=>[n.c,n.c])]);
+$("date").value=today();$("rmon").value=today().slice(0,7);
+const showSer=()=>fill($("sers"),[["","All series / not series-specific"],...SER[$("nof").value].split(", ").map(x=>[x,"Series "+x])]);
+$("nof").onchange=showSer;showSer();$("date").onchange=load;
+$("t1").onclick=()=>tab(1);$("t2").onclick=()=>tab(2);$("t3").onclick=()=>tab(3);
+function tab(n){["1","2","3"].forEach(i=>{$("v"+i).hidden=i!=n;$("t"+i).className=i==n?"on":""});if(n==2){renderRep();load()}if(n==3)loadUsers()}
+let me=null;
+async function call(m,u,b){const r=await fetch(u,{method:m,headers:{"Content-Type":"application/json"},body:b?JSON.stringify(b):undefined});let d={};try{d=await r.json()}catch(e){}if(r.status==401&&u!="api/login"){me=null;showLogin();throw new Error("Please log in")}if(!r.ok)throw new Error(d.error||"HTTP "+r.status);return d}
+const api=(m,p,b)=>call(m,"api/logs"+(p||""),b);
+async function load(){try{logs=await api("GET","?months="+[...new Set([$("date").value.slice(0,7),$("rmon").value].filter(Boolean))].join(","));$("banner").textContent="";refresh()}catch(x){$("banner").textContent="";$("banner").append(el("div","Could not reach the server: "+x.message,"banner"))}}
+async function save(e){try{await api("POST","",e);await load()}catch(x){alert("Could not save: "+x.message)}}
+$("add").onclick=async()=>{const issue=$("issue").value.trim();if(!issue)return;
+await save({date:$("date").value,nof:$("nof").value,series:$("sers").value,type:$("type").value,issue,action:$("action").value.trim(),status:$("type").value=="obs"?"":$("status").value});
+$("issue").value="";$("action").value=""};
+$("clear").onclick=()=>save({date:$("date").value,nof:$("nof").value,series:$("sers").value,type:"clear",issue:"",action:"",status:""});
+function refresh(){renderList();if(!$("v2").hidden)renderRep()}
+function renderList(){const d=$("date").value,L=$("list");L.textContent="";
+$("lh").textContent="Entries for "+d+" (all NOFs)";
+const xs=logs.filter(l=>l.date==d).sort((a,b)=>a.ts-b.ts);
+if(!xs.length){L.append(el("div","Nothing logged yet for this date.","mut"));return}
+xs.forEach(l=>{const r=el("div",null,"ent"+(l.status=="Outstanding"?" open":l.status=="Resolved"?" done":l.type=="clear"?" clear":"")),hd=el("div",null,"ent-head");
+hd.append(el("span",l.nof||"General","ident"));
+hd.append(el("span",l.type=="clear"?(l.series?"Series "+l.series:"All series")+" checked, no issues":l.type=="obs"?"Observation"+(l.series?", series "+l.series:""):(l.series?"Series "+l.series:"No series given"),"ent-lab"));
+if(l.status)hd.append(el("span",l.status,"chip "+(l.status=="Resolved"?"ok":"wr")));
+r.append(hd);
+if(l.issue)r.append(el("div",l.issue));
+if(l.action)r.append(el("div","Action: "+l.action,"mut"));r.append(el("div","Logged by "+(l.by||"—")+(l.edited?", edited":""),"mut"));
+const bar=el("div");bar.style.marginTop="10px";
+if(l.status&&(me.role=="admin"||l.byId==me.id)){const t=el("button",l.status=="Resolved"?"Reopen":"Mark resolved","sm");t.onclick=()=>upd(l,{status:l.status=="Resolved"?"Outstanding":"Resolved"});bar.append(t,document.createTextNode(" "))}
+if(me.role=="admin"||l.byId==me.id){const e2=el("button","Edit","sm");e2.onclick=()=>editEntry(l);bar.append(e2," ");const x=el("button","Delete","sm");x.onclick=()=>{if(confirm("Delete this entry?"))del(l)};bar.append(x)}r.append(bar);L.append(r)})}
+async function upd(l,p){try{await api("PATCH","/"+l.id,p);await load()}catch(e){alert("Could not update")}}
+async function del(l){try{await api("DELETE","/"+l.id);await load()}catch(e){alert("Could not delete")}}
+function renderRep(){const R=$("rep");R.textContent="";const m=$("rmon").value,s=$("rnof").value;if(!m)return;
+const inM=logs.filter(l=>(l.date||"").startsWith(m));
+const codes=s?[s]:NOFS.map(n=>n.c).filter(c=>inM.some(l=>l.nof==c));
+if(!s){const w=el("div",null,"card");w.append(el("h2","NOF summary – "+mname(m)));
+const t=el("table"),hr=el("tr");["NOF","Days checked","Issues","Outstanding"].forEach(x=>hr.append(el("th",x)));t.append(hr);
+codes.forEach(c=>{const xs=inM.filter(l=>l.nof==c),r=el("tr");const tdc=el("td");tdc.append(el("span",c,"ident"));r.append(tdc,el("td",String(new Set(xs.filter(l=>l.type!="obs").map(l=>l.date)).size)),el("td",String(xs.filter(l=>l.type=="issue").length)),el("td",String(xs.filter(l=>l.status=="Outstanding").length)));t.append(r)});
+const sc=el("div",null,"scroll");sc.append(t);w.append(sc);
+w.append(el("div",(NOFS.length-codes.length)+" of "+NOFS.length+" NOFs have no entries this month.","mut"));R.append(w)}
+codes.forEach(c=>{const xs=inM.filter(l=>l.nof==c).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.ts-b.ts);
+const iss=xs.filter(l=>l.type=="issue"),obs=xs.filter(l=>l.type=="obs"),days=new Set(xs.filter(l=>l.type!="obs").map(l=>l.date)).size;
+const w=el("div",null,"rep card");w.append(el("h2","MONTHLY ASSIGNED-NOF REPORT"));
+const t1=el("table");[["NOF",c],["Reporting Month",mname(m)],["NOTAM series maintained",SER[c]],["Days with a logged check",String(days)]].forEach(([a,b])=>{const r=el("tr");r.append(el("th",a),el("td",b));t1.append(r)});
+const sc=el("div",null,"scroll");sc.append(t1);w.append(sc);
+w.append(el("h2","Checks per series"));
+const tc=el("table"),hc=el("tr");["Series","Days checked","Issues","Outstanding"].forEach(x=>hc.append(el("th",x)));tc.append(hc);
+SER[c].split(", ").forEach(x=>{const ds=new Set(xs.filter(l=>l.type!="obs"&&(l.series==x||(l.type=="clear"&&!l.series))).map(l=>l.date)),is=xs.filter(l=>l.type=="issue"&&l.series==x),r=el("tr");r.append(el("td",x),el("td",String(ds.size)),el("td",String(is.length)),el("td",String(is.filter(l=>l.status=="Outstanding").length)));tc.append(r)});
+const s3=el("div",null,"scroll");s3.append(tc);w.append(s3);
+w.append(el("h2","Significant issues, actions and status"));
+const t=el("table"),hr=el("tr");["Significant Issue Identified","Action/Follow-up Undertaken","Status / Outstanding Matter"].forEach(x=>hr.append(el("th",x)));t.append(hr);
+if(!iss.length){const r=el("tr"),cc=el("td","No significant issues logged for this month.");cc.colSpan=3;r.append(cc);t.append(r)}
+iss.forEach(l=>{const r=el("tr");r.append(el("td",l.date+(l.series?" · Series "+l.series:"")+" – "+l.issue+(l.by?" (logged by "+l.by+")":"")),el("td",l.action||"—"),el("td",l.status||"—"));t.append(r)});
+const s2=el("div",null,"scroll");s2.append(t);w.append(s2);
+w.append(el("h2","Other Observations"));
+if(!obs.length)w.append(el("div","None recorded.","mut"));obs.forEach(l=>w.append(el("div","• "+l.date+" – "+l.issue)));
+w.append(el("div","Entebbe International NOTAM Office – NOF Monitoring and Maintenance","mut"));R.append(w)})}
+$("rmon").onchange=load;$("rnof").onchange=renderRep;$("print").onclick=()=>window.print();
+function showLogin(){$("app").hidden=true;$("login").hidden=false;$("lpw").value=""}
+function changePw(force){return new Promise(res=>{const d=$("pwd");$("po").value=$("pn").value="";$("perr").textContent=force?"You must choose a new password before continuing.":"";$("pcancel").hidden=force;
+$("pok").onclick=async()=>{try{await call("POST","api/password",{old:$("po").value,new:$("pn").value});me.mustChange=false;d.close();res()}catch(e){$("perr").textContent=e.message}};
+$("pcancel").onclick=()=>{d.close();res()};d.oncancel=e=>{if(force)e.preventDefault()};d.showModal()})}
+async function loadUsers(){const us=await call("GET","api/users"),T=$("ulist");T.textContent="";const t=el("table"),h=el("tr");["Username","Role","Actions"].forEach(x=>h.append(el("th",x)));t.append(h);
+us.forEach(u=>{const r=el("tr"),a=el("td");
+if(u.source=="app"){const rp=el("button","Reset password","sm");rp.onclick=async()=>{const p=prompt("Temporary password for "+u.username+" (8+ characters). They must change it at next login:");if(!p)return;try{await call("POST","api/users/"+u.id+"/password",{password:p});alert("Password reset.")}catch(e){alert(e.message)}};a.append(rp);
+if(u.id!=me.id){const d=el("button","Delete","sm");d.onclick=async()=>{if(!confirm("Delete user "+u.username+"? Their past entries are kept."))return;try{await call("DELETE","api/users/"+u.id);loadUsers()}catch(e){alert(e.message)}};a.append(" ",d)}}
+else a.append(el("span","Set in Netlify settings","mut"));
+r.append(el("td",u.username),el("td",u.role),a);t.append(r)});const s=el("div",null,"scroll");s.append(t);T.append(s)}
+$("ucreate").onclick=async()=>{try{await call("POST","api/users",{username:$("unm").value.trim().toLowerCase(),password:$("upw").value,role:$("urole").value});$("unm").value=$("upw").value="";loadUsers()}catch(e){alert(e.message)}};
+function serOpts(sel,nof,cur){fill(sel,[["","All series / not series-specific"],...(SER[nof]||"").split(", ").filter(Boolean).map(x=>[x,"Series "+x])]);sel.value=cur||""}
+function editEntry(l){const d=$("ed");fill($("enof"),NOFS.map(n=>[n.c,n.c]));$("enof").value=l.nof;serOpts($("eser"),l.nof,l.series);$("enof").onchange=()=>serOpts($("eser"),$("enof").value,"");
+$("eissue").value=l.issue||"";$("eaction").value=l.action||"";$("estat").value=l.status||"Outstanding";
+$("eissue").hidden=l.type=="clear";$("eaction").hidden=l.type!="issue";$("estat").hidden=l.type!="issue";$("eerr").textContent="";
+$("eok").onclick=async()=>{const b={nof:$("enof").value,series:$("eser").value};
+if(l.type!="clear"){b.issue=$("eissue").value.trim();if(!b.issue){$("eerr").textContent="The issue cannot be empty";return}}
+if(l.type=="issue"){b.action=$("eaction").value.trim();b.status=$("estat").value}
+try{await api("PATCH","/"+l.id,b);d.close();await load()}catch(e){$("eerr").textContent=e.message}};
+$("ecancel").onclick=()=>d.close();d.showModal()}
+async function enter(u){me=u;$("login").hidden=true;$("app").hidden=false;$("who").textContent="Signed in as "+u.username+" ("+u.role+")";$("t2").hidden=$("t3").hidden=u.role!="admin";tab(1);if(u.mustChange)await changePw(true);await load()}
+$("lgo").onclick=async()=>{$("lerr").textContent="";try{await enter(await call("POST","api/login",{username:$("lus").value.trim().toLowerCase(),password:$("lpw").value}))}catch(e){$("lerr").textContent=e.message}};
+$("lpw").onkeydown=e=>{if(e.key=="Enter")$("lgo").click()};
+$("out").onclick=async()=>{try{await call("POST","api/logout")}catch(e){}me=null;logs=[];showLogin()};
+$("rf").onclick=load;$("pw").onclick=()=>changePw(false);
+(async()=>{try{await enter(await call("GET","api/me"))}catch(e){showLogin()}setInterval(()=>{if(me&&!document.hidden)load()},300000);document.addEventListener("visibilitychange",()=>{if(me&&!document.hidden)load()})})();
+</script></main></body></html>
