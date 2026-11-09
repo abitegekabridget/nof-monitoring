@@ -38,6 +38,14 @@ th,td{border:1px solid var(--bd);padding:6px 8px;text-align:left;vertical-align:
 <div class="row"><input type="password" id="pn" placeholder="New password (8+ characters)" autocomplete="new-password"></div>
 <div id="perr" class="wr" style="margin-bottom:8px"></div>
 <div class="row"><button class="pri" id="pok">Change password</button><button id="pcancel">Cancel</button></div></dialog>
+<dialog id="ed"><h2 style="margin-top:0">Edit entry</h2>
+<div class="row"><select id="enof"></select><select id="eser"></select></div>
+<textarea id="eissue" placeholder="Issues found"></textarea>
+<textarea id="eaction" placeholder="Action taken (optional)" style="margin-top:6px"></textarea>
+<div class="row" style="margin-top:8px"><select id="estat"><option>Outstanding</option><option>Resolved</option></select></div>
+<div class="mut">To change the date, delete this entry and add it again.</div>
+<div id="eerr" class="wr" style="margin:6px 0"></div>
+<div class="row"><button class="pri" id="eok">Save changes</button><button id="ecancel">Cancel</button></div></dialog>
 <div id="app" hidden>
 <div class="noprint">
 <h1>NOF Monitoring and Maintenance Log</h1>
@@ -113,10 +121,10 @@ xs.forEach(l=>{const r=el("div",null,"ent");
 r.append(el("b",(l.nof||"General")+(l.series?" ("+l.series+")":"")+(l.type=="clear"?" – checked, no issues":l.type=="obs"?" – observation":" – ")));
 if(l.status)r.append(el("b",l.status,l.status=="Resolved"?"ok":"wr"));
 if(l.issue)r.append(el("div",l.issue));
-if(l.action)r.append(el("div","Action: "+l.action,"mut"));r.append(el("div","Logged by "+(l.by||"—"),"mut"));
+if(l.action)r.append(el("div","Action: "+l.action,"mut"));r.append(el("div","Logged by "+(l.by||"—")+(l.edited?" · edited":""),"mut"));
 const bar=el("div");bar.style.marginTop="4px";
 if(l.status&&(me.role=="admin"||l.byId==me.id)){const t=el("button",l.status=="Resolved"?"Reopen":"Mark resolved","sm");t.onclick=()=>upd(l,{status:l.status=="Resolved"?"Outstanding":"Resolved"});bar.append(t,document.createTextNode(" "))}
-if(me.role=="admin"){const x=el("button","Delete","sm");x.onclick=()=>{if(confirm("Delete this entry?"))del(l)};bar.append(x)}r.append(bar);L.append(r)})}
+if(me.role=="admin"||l.byId==me.id){const e2=el("button","Edit","sm");e2.onclick=()=>editEntry(l);bar.append(e2," ");const x=el("button","Delete","sm");x.onclick=()=>{if(confirm("Delete this entry?"))del(l)};bar.append(x)}r.append(bar);L.append(r)})}
 async function upd(l,p){try{await api("PATCH","/"+l.id,p);await load()}catch(e){alert("Could not update")}}
 async function del(l){try{await api("DELETE","/"+l.id);await load()}catch(e){alert("Could not delete")}}
 function renderRep(){const R=$("rep");R.textContent="";const m=$("rmon").value,s=$("rnof").value;if(!m)return;
@@ -156,6 +164,15 @@ if(u.id!=me.id){const d=el("button","Delete","sm");d.onclick=async()=>{if(!confi
 else a.append(el("span","Set in Netlify settings","mut"));
 r.append(el("td",u.username),el("td",u.role),a);t.append(r)});const s=el("div",null,"scroll");s.append(t);T.append(s)}
 $("ucreate").onclick=async()=>{try{await call("POST","api/users",{username:$("unm").value.trim().toLowerCase(),password:$("upw").value,role:$("urole").value});$("unm").value=$("upw").value="";loadUsers()}catch(e){alert(e.message)}};
+function serOpts(sel,nof,cur){fill(sel,[["","All series / not series-specific"],...(SER[nof]||"").split(", ").filter(Boolean).map(x=>[x,"Series "+x])]);sel.value=cur||""}
+function editEntry(l){const d=$("ed");fill($("enof"),NOFS.map(n=>[n.c,n.c]));$("enof").value=l.nof;serOpts($("eser"),l.nof,l.series);$("enof").onchange=()=>serOpts($("eser"),$("enof").value,"");
+$("eissue").value=l.issue||"";$("eaction").value=l.action||"";$("estat").value=l.status||"Outstanding";
+$("eissue").hidden=l.type=="clear";$("eaction").hidden=l.type!="issue";$("estat").hidden=l.type!="issue";$("eerr").textContent="";
+$("eok").onclick=async()=>{const b={nof:$("enof").value,series:$("eser").value};
+if(l.type!="clear"){b.issue=$("eissue").value.trim();if(!b.issue){$("eerr").textContent="The issue cannot be empty";return}}
+if(l.type=="issue"){b.action=$("eaction").value.trim();b.status=$("estat").value}
+try{await api("PATCH","/"+l.id,b);d.close();await load()}catch(e){$("eerr").textContent=e.message}};
+$("ecancel").onclick=()=>d.close();d.showModal()}
 async function enter(u){me=u;$("login").hidden=true;$("app").hidden=false;$("who").textContent="Signed in as "+u.username+" ("+u.role+")";$("t2").hidden=$("t3").hidden=u.role!="admin";tab(1);if(u.mustChange)await changePw(true);await load()}
 $("lgo").onclick=async()=>{$("lerr").textContent="";try{await enter(await call("POST","api/login",{username:$("lus").value.trim().toLowerCase(),password:$("lpw").value}))}catch(e){$("lerr").textContent=e.message}};
 $("lpw").onkeydown=e=>{if(e.key=="Enter")$("lgo").click()};
